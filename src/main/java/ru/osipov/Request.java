@@ -7,6 +7,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -18,16 +19,20 @@ public class Request {
     private final String protocolVersion;
     private final List<String> headers;
     private final byte[] body;
-    private final ConcurrentHashMap<String, String> queryParams;
+    private final ConcurrentHashMap<String, List<String>> queryParams;
+    private final ConcurrentHashMap<String, List<String>> postParams;
+
 
     private Request(String method, String path, String protocolVersion, List<String> headers, byte[] body,
-                    ConcurrentHashMap<String, String> queryParams) {
+                    ConcurrentHashMap<String, List<String>> queryParams,
+                    ConcurrentHashMap<String, List<String>> postParams) {
         this.method = method;
         this.path = path;
         this.protocolVersion = protocolVersion;
         this.headers = headers;
         this.body = body;
         this.queryParams = queryParams;
+        this.postParams = postParams;
     }
 
     public static Request parse(BufferedInputStream in, BufferedOutputStream out) throws IOException {
@@ -70,12 +75,6 @@ public class Request {
             return null;
         }
 
-        ConcurrentHashMap<String, String> queryParams = new ConcurrentHashMap<>();
-        List<NameValuePair> args = URLEncodedUtils.parse(paramString, Charset.defaultCharset());
-        for (NameValuePair arg : args) {
-            queryParams.put(arg.getName(), arg.getValue());
-        }
-
         // ищем заголовки -----------------------------------------------------------------
         final var headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
         final var headersStart = requestLineEnd + requestLineDelimiter.length;
@@ -93,6 +92,9 @@ public class Request {
         final var headersBytes = in.readNBytes(headersEnd - headersStart);
         final var headers = Arrays.asList(new String(headersBytes).split("\r\n"));
 
+        ConcurrentHashMap<String, List<String>> queryParams = parseParam(paramString);
+        ConcurrentHashMap<String, List<String>> postParams = null;
+
         // для GET тела нет
         byte[] body = null;
         if (!method.equals("GET")) {
@@ -103,9 +105,34 @@ public class Request {
                 final var length = Integer.parseInt(contentLength.get());
                 body = in.readNBytes(length);
             }
+
+            // Выполним задание 2 ------------------------------------------------------------------
+            System.out.println("Кодировка запроса : " + getContentType(headers));
+            if (getContentType(headers).contains("application/x-www-form-urlencoded")) {
+                postParams = parseParam(new String(body));
+            }
         }
 
-        return new Request(method, path, requestLine[2], headers, body, queryParams);
+        return new Request(method, path, requestLine[2], headers, body, queryParams, postParams);
+    }
+
+    private static ConcurrentHashMap<String, List<String>> parseParam(String paramString) {
+
+        List<NameValuePair> args = URLEncodedUtils.parse(paramString, Charset.defaultCharset());
+        ConcurrentHashMap<String, List<String>> temp = new ConcurrentHashMap<>();
+
+        for (NameValuePair arg : args) {
+            if (!temp.containsKey(arg.getName()))
+                temp.put(arg.getName(), new ArrayList<>(List.of(arg.getValue())));
+            else
+                temp.get(arg.getName()).add(arg.getValue());
+        }
+        return temp.isEmpty() ? null : temp;
+    }
+
+    private static String getContentType(List<String> headers) {
+        final var contentType = extractHeader(headers, "Content-Type");
+        return contentType.orElse("application/x-www-form-urlencoded");
     }
 
     public String getMethod() {
@@ -116,13 +143,23 @@ public class Request {
         return path;
     }
 
-    public ConcurrentHashMap<String, String> getQueryParams() {
+    public ConcurrentHashMap<String, List<String>> getQueryParams() {
         return queryParams;
     }
 
-    public String getQueryParam(String paramName) {
+    public List<String> getQueryParam(String paramName) {
         if (queryParams.containsKey(paramName))
             return queryParams.get(paramName);
+        return null;
+    }
+
+    public ConcurrentHashMap<String, List<String>> getPostParams() {
+        return postParams;
+    }
+
+    public List<String> getPostParam(String paramName) {
+        if (postParams.containsKey(paramName))
+            return postParams.get(paramName);
         return null;
     }
 
@@ -134,8 +171,10 @@ public class Request {
         return headers;
     }
 
-    public byte[] getBody() {
-        return body;
+    public String getBody() {
+        if (body != null)
+            return new String(body);
+        return null;
     }
 
     private static void badRequest(BufferedOutputStream out) throws IOException {
@@ -176,7 +215,7 @@ public class Request {
                 ", path='" + path + '\'' +
                 ", protocolVersion='" + protocolVersion + '\'' +
                 ", headers=" + headers +
-                ", body=" + Arrays.toString(body) +
+                ", body=" + body +
                 ", queryParams=" + queryParams +
                 '}';
     }

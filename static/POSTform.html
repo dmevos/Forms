@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<body>
+<h1>Вызов формы, где enctype="x-www-form-urlencoded"</h1>
+  <form action="http://localhost:9999/form?value=get-value" method="post" enctype="application/x-www-form-urlencoded">
+      <input name="title" value="Поле1_1">
+      <input name="value" value="Field1_2">
+      <input name="value" value="1_3"> <!-- специально два поля с одним name -->
+      <input type="file" name="image"> <!-- для отправки файлов -->
+    <button>Send</button>
+  </form>
+<br><hr>
+<h1>Вызов формы, где enctype="multipart/form-data"</h1>
+  <form action="http://localhost:9999/form?value=get-value" method="post" enctype="multipart/form-data">
+      <input name="title" value="Поле2_1">
+      <input name="value" value="Field2_2">
+      <input name="value" value="2_3"> <!-- специально два поля с одним name -->
+      <input type="file" name="image"> <!-- для отправки файлов -->
+      <button>Send</button>
+  </form>
+</body>
+</html>
+

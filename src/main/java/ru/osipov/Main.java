@@ -13,6 +13,9 @@ public class Main {
         server.addHandler("POST", "/messages",
                 (request, out) -> sendResponse("Hello from POST /messages", out));
 
+        server.addHandler("POST", "/form",
+                (request, out) -> sendResponse("Hello from POST /form", out));
+
         server.listen(9999);
     }
 
