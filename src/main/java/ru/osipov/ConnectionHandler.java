@@ -26,8 +26,9 @@ public class ConnectionHandler {
             System.out.println("Путь request      : " + request.getPath());
             System.out.println("Протокол request  : " + request.getProtocolVersion());
             System.out.println("Заголовки request : " + request.getHeaders());
-            System.out.println("Тело request      : " + Arrays.toString(request.getBody()));
-            System.out.println("queryПараметры    : " + request.getQueryParams() + "\n");
+            System.out.println("Тело request      : " + request.getBody());
+            System.out.println("queryПараметры    : " + request.getQueryParams());
+            System.out.println("postПараметры     : " + request.getPostParams() + "\n");
 
             var pathHandlers = handlers.get(request.getMethod());
 
